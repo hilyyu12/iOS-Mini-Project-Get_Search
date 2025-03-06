@@ -26,45 +26,28 @@
     self.viewModel = [[PostViewModel alloc] init];
     
     [self setupView];
-    
+    [self fetchData];
 }
 
 - (void)setupView {
     self.searchBar.delegate = self;
     self.tableView.delegate = self;
+    self.tableView.dataSource = self;
 }
 
 - (void)fetchData {
-    NSURL *url = [NSURL URLWithString:@"https://jsonplaceholder.typicode.com/posts"];
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"Error fetching data: %@", error.localizedDescription);
-            return;
+    [self.viewModel fetchPosts:^(BOOL success) {
+        if (success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.posts = self.viewModel.posts;
+                [self.tableView reloadData];
+            });
+        } else {
+            NSLog(@"Failed to fetch data");
         }
-
-        NSError *jsonError;
-        NSArray *jsonArray = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
-        if (jsonError) {
-            NSLog(@"JSON Parsing Error: %@", jsonError.localizedDescription);
-            return;
-        }
-
-        NSMutableArray *posts = [NSMutableArray array];
-        for (NSDictionary *dict in jsonArray) {
-            Post *post = [[Post alloc] initWithDictionary:dict];
-            [posts addObject:post];
-        }
-
-        self.posts = posts;
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            NSLog(@"Data loaded, reloading table view");
-            [self.tableView reloadData];
-        });
     }];
-    
-    [task resume];
 }
+
 
 
 #pragma mark - UITableView DataSource & Delegate
@@ -78,20 +61,33 @@
     
     if (self.posts.count > indexPath.row) {
         Post *post = self.posts[indexPath.row];
-//        cell.textLabel.text = NSString(post.postId);
-        cell.textLabel.text = post.title;
+        cell.textLabel.text = [NSString stringWithFormat:@"%ld - %@", (long)post.postId, post.title];
     }
     
     return cell;
 }
+
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     
-//    Post *post = self.filteredPosts[indexPath.row];
-//    DetailVC *detailVC = [self.storyboard instantiateViewControllerWithIdentifier:@"DetailVC"];
-//    detailVC.post = post;
-//    
-//    [self.navigationController pushViewController:detailVC animated:YES];
+    if (self.posts.count > indexPath.row) {
+            Post *post = self.posts[indexPath.row];
+            
+            NSString *message = [NSString stringWithFormat:@"ID: %ld\n\nTitle: %@\n\nBody: %@",
+                                 (long)post.postId, post.title, post.body];
+
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Post Details"
+                                                                           message:message
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+
+            UIAlertAction *closeAction = [UIAlertAction actionWithTitle:@"Close"
+                                                                  style:UIAlertActionStyleCancel
+                                                                handler:nil];
+
+            [alert addAction:closeAction];
+
+            [self presentViewController:alert animated:YES completion:nil];
+        }
 }
 
 
