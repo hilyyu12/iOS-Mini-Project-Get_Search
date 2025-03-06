@@ -34,4 +34,14 @@
     [dataTask resume];
 }
 
+- (NSArray<Post *> *)searchPostsWithTitle:(NSString *)searchText {
+    if (searchText.length == 0) {
+        return self.posts;
+    }
+    
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"title CONTAINS[cd] %@", searchText];
+    return [self.posts filteredArrayUsingPredicate:predicate];
+}
+
+
 @end
